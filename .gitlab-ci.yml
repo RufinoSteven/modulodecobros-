@@ -1,0 +1,106 @@
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+      when: never
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: always
+    - when: always
+
+image: maven:3.9.8-eclipse-temurin-21
+
+variables:
+  MAVEN_REPO_LOCAL: "$CI_PROJECT_DIR/.m2/repository"
+  MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository"
+  MAVEN_CLI_OPTS: "-B -e -V -DskipTests=false -DfailIfNoTests=true"
+  ENVIRONMENT:
+    value: "QA"
+    description: "Execution environment (DES, QA, STG)"
+    options:
+      - "DES"
+      - "QA"
+      - "STG"
+  BROWSER:
+    value: "CHROME"
+    description: "Browser for UI tests"
+    options:
+      - "CHROME"
+      - "FIREFOX"
+      - "EDGE"
+  TAGS:
+    value: "@SMOKETEST"
+    description: "Cucumber tag expression (empty runs all)"
+    options:
+      - "@SMOKETEST"
+      - "@regression"
+      - ""
+
+stages:
+  - dependencies
+  - test
+  - report
+  - close
+
+cache:
+  key: maven
+  paths:
+    - .m2/repository
+
+dependencies_job:
+  stage: dependencies
+  script:
+    - mkdir -p .m2/repository
+    - mvn -s .m2/settings.xml -Dmaven.repo.local="$MAVEN_REPO_LOCAL" -B dependency:resolve
+  artifacts:
+    when: always
+    paths:
+      - .m2/repository
+    expire_in: 1 day
+
+run_tests:
+  stage: test
+  before_script:
+    - apt-get update
+    - apt-get install -y chromium fonts-liberation
+  script:
+    - mkdir -p .m2/repository
+    - |
+      case "$ENVIRONMENT" in
+        DES) ENV_ARG="DEV" ;;
+        QA) ENV_ARG="QA1" ;;
+        STG) ENV_ARG="UAT" ;;
+        *) echo "Unsupported ENVIRONMENT: $ENVIRONMENT"; exit 1 ;;
+      esac
+      set -- $MAVEN_CLI_OPTS -DrunPipeline=true -DEnvironment="$ENV_ARG" -DBrowser="$BROWSER"
+      if [ -n "$TAGS" ]; then
+        set -- "$@" -Dcucumber.filter.tags="$TAGS"
+      fi
+      mvn -s .m2/settings.xml -Dmaven.repo.local="$MAVEN_REPO_LOCAL" "$@" test
+  artifacts:
+    when: always
+    paths:
+      - reports/
+      - target/
+      - logs/
+
+generate_report:
+  stage: report
+  dependencies:
+    - run_tests
+  script:
+    - echo "Publishing report artifact"
+    - ls -lah reports || true
+    - test -f reports/SparkReport.html
+  artifacts:
+    when: always
+    expire_in: 7 days
+    expose_as: "Extent Report"
+    paths:
+      - reports/SparkReport.html
+      - target/screenshots/
+
+close_job:
+  stage: close
+  dependencies:
+    - generate_report
+  script:
+    - echo "Pipeline closed."
