@@ -48,3 +48,29 @@
 ## Configuracion de .m2
 - El repo local de Maven se define en .m2/repository y se cachea entre jobs.
 - .m2/repository esta en gitignore para evitar binarios en el repo.
+
+## Documentacion del .gitlab-ci.yml agregado
+### Workflow
+- Bloquea pipelines en push y permite ejecucion en merge request y manual (Run pipeline/API).
+
+### Variables
+- ENVIRONMENT: permite seleccionar DES/QA/STG, con mapeo interno a DEV/QA1/UAT.
+- BROWSER: define navegador (CHROME/FIREFOX/EDGE).
+- TAGS: expresion de tags de Cucumber (vacio ejecuta todo).
+- MAVEN_REPO_LOCAL/MAVEN_OPTS/MAVEN_CLI_OPTS: controlan el repo local y opciones de Maven.
+
+### Stages
+- dependencies: descarga/resolve de dependencias Maven.
+- test: ejecucion de pruebas con tags y ambiente.
+- report: validacion y publicacion del reporte.
+- close: cierre del pipeline con mensaje final.
+
+### Jobs
+- dependencies_job: resuelve dependencias y cachea .m2/repository con artifacts 1 dia.
+- run_tests: instala chromium y fonts-liberation, ejecuta mvn con runPipeline, Environment, Browser y tags.
+- generate_report: valida reports/SparkReport.html y expone artifact por 7 dias.
+- close_job: paso final informativo.
+
+### Artifacts y cache
+- cache global de .m2/repository.
+- artifacts del reporte con expire_in de 7 dias.
