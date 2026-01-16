@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<extentreports>
+    <configuration>
+
+        <!-- report theme -->
+        <!-- STANDARD, DARK -->
+        <theme>STANDARD</theme>
+
+        <!-- document encoding -->
+        <!-- defaults to UTF-8 -->
+        <encoding>UTF-8</encoding>
+
+        <!-- protocol for script and stylesheets -->
+        <!-- defaults to https -->
+        <!-- HTTP, HTTPS -->
+        <protocol>HTTPS</protocol>
+
+        <!-- offline report -->
+        <timelineEnabled>true</timelineEnabled>
+
+        <!-- offline report -->
+        <enableOfflineMode>false</enableOfflineMode>
+
+        <!-- use thumbnails for base64 images -->
+        <!-- this may slowdown viewing tests -->
+        <thumbnailForBase64>true</thumbnailForBase64>
+
+        <!-- title of the document -->
+        <documentTitle>Reporte de Automatización</documentTitle>
+
+        <!-- report name - displayed at top-nav -->
+        <reportName>
+
+            <!--LOGO -->
+            <![CDATA[
+              <img src="data:image/png;base64,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"  width='200' height='35' />
+            ]]>
+
+        </reportName>
+
+        <!-- timestamp format -->
+        <timeStampFormat>MMM dd, yyyy HH:mm:ss</timeStampFormat>
+
+        <!-- custom javascript -->
+        <scripts>
+            <![CDATA[
+        document.addEventListener('DOMContentLoaded', function() {
+          try {
+            let element = document.getElementsByClassName("nav-right").item(0);
+            if (element) {
+              element.insertAdjacentHTML('afterbegin','<li class="m-r-10"><a href="#"><span id="nombreDocumento" class="badge badge-primary">projectName</span></a></li>');
+            }
+
+            const starttime=document.getElementsByClassName('nav-logo');
+            if (starttime && starttime[0]) {
+              starttime[0].remove();
+            }
+
+            const fondo=document.getElementsByClassName('badge badge-primary');
+            if (fondo && fondo[1]) {
+              fondo[1].removeAttribute('class');
+            }
+
+            let elementTypeRow = document.getElementsByClassName("container-fluid p-4 view dashboard-view");
+            if (!elementTypeRow || !elementTypeRow[0]) return;
+            elementTypeRow[0].setAttribute('id',"dashboardStadistic");
+
+            let blockTest = elementTypeRow[0].children[0];
+            if (blockTest && blockTest.children && blockTest.children.length >= 4) {
+              blockTest.children.item(3).setAttribute('class','col-md-2');
+              blockTest.children.item(2).setAttribute('class','col-md-2');
+              blockTest.children.item(1).setAttribute('class','col-md-2');
+              blockTest.children.item(0).setAttribute('class','col-md-2');
+            }
+
+            let elements=document.getElementsByTagName('H3');
+            if (elements && elements.length >= 2) {
+              let elementoFecha1= elements[0].innerHTML;
+              let elementoFecha2= elements[1].innerHTML;
+              let startExecution= new Date(elementoFecha1);
+              let endExecution= new Date(elementoFecha2);
+              let result= new Date(endExecution-startExecution);
+              blockTest.insertAdjacentHTML('beforeend','<div class="col-md-2"> <div class="card"><div class="card-body"><p class="m-b-0">Execution Time</p><h3>'+result.getUTCHours().toString().padStart(2,0)+":"+result.getMinutes().toString().padStart(2,0)+":"+result.getUTCSeconds().toString().padStart(2,0)+'</h3></div></div></div>');
+            }
+
+            //bloque de codigo que agrega el registro total en la ultima fila de la tabla
+            let tbodyElements=document.getElementsByClassName("col-lg-6 col-md-12 category-container")[0]
+              .getElementsByClassName("table table-sm table-bordered")[0].getElementsByTagName("tbody")[0];
+
+            let trElements=tbodyElements.getElementsByTagName("tr");
+            let elementTotal;
+            let elementList;
+            for (let index = 0; index < trElements.length; index++) {
+              elementList = trElements[index].getElementsByTagName("td")[0].textContent;
+              if (elementList=="TOTALS") {
+                elementTotal= trElements[index].cloneNode(true);
+                trElements[index].remove();
+              }
+            }
+            if (elementTotal) {
+              tbodyElements.insertAdjacentHTML("beforeend",elementTotal.innerHTML);
+            }
+
+            //Bloque de codigo para sustitur los titulos Suite, Class, Events en el segmento estadistico del reporte
+            let chartName=elementTypeRow[0].children[1].getElementsByTagName("h6");
+            let charLeyend=elementTypeRow[0].children[1].getElementsByTagName("small");
+            let sumaryScenario=elementTypeRow[0].children[0].getElementsByTagName("p");
+
+            for (let index = 0; index < sumaryScenario.length; index++) {
+              sumaryScenario[index].innerText=sumaryScenario[index].innerText.replace("Suite","Scenarios");
+            }
+            for (let index = 0; index < chartName.length; index++) {
+              if (chartName[index].textContent=="Suite") {
+                chartName[index].innerText="Scenarios";
+              } else if (chartName[index].textContent=="Class") {
+                chartName[index].innerText="Test Cases";
+              } else {
+                chartName[index].innerText="Test Steps";
+              }
+            }
+            for (let index = 0; index < charLeyend.length; index++) {
+              charLeyend[index].innerText=charLeyend[index].innerText.replace("class","test cases");
+              charLeyend[index].innerText=charLeyend[index].innerText.replace("suite","scenarios");
+              charLeyend[index].innerText=charLeyend[index].innerText.replace("events","test steps");
+            }
+
+            // ---------- Transform each scenario's step list into a 3-column table ----------
+            function buildTableForBody(body) {
+              try {
+                if (!body || body.querySelector('table[data-ext-custom="logs"]')) return;
+
+                const steps = Array.from(body.querySelectorAll(':scope > .step'));
+                if (steps.length === 0) return;
+
+                const table = document.createElement('table');
+                table.className = 'table table-sm';
+                table.setAttribute('data-ext-custom','logs');
+                const thead = document.createElement('thead');
+                thead.innerHTML = '<tr><th class="status-col">Status</th><th class="timestamp-col">Timestamp</th><th class="details-col">Details</th></tr>';
+                const tbody = document.createElement('tbody');
+
+                steps.forEach(function(step){
+                  const tr = document.createElement('tr');
+                  tr.className = 'event-row';
+
+                  // STATUS
+                  const tdStatus = document.createElement('td');
+                  let status = 'Info';
+                  if (step.classList.contains('pass-bg')) status = 'Pass';
+                  else if (step.classList.contains('fail-bg')) status = 'Fail';
+                  const badgeCls = status === 'Pass' ? 'badge log pass-bg' : (status === 'Fail' ? 'badge log fail-bg' : 'badge log');
+                  tdStatus.innerHTML = '<span class="'+badgeCls+'">'+status+'</span>';
+
+                  // TIMESTAMP (Spark may not expose per-step time; leave empty if not found)
+                  const tdTime = document.createElement('td');
+                  const timeEl = step.querySelector(':scope > small.time, :scope > span.time');
+                  tdTime.textContent = timeEl ? timeEl.textContent : '';
+
+                  // DETAILS
+                  const tdDetails = document.createElement('td');
+                  const detailsFrag = document.createElement('div');
+                  detailsFrag.innerHTML = step.innerHTML;
+                  tdDetails.appendChild(detailsFrag);
+
+                  tr.appendChild(tdStatus);
+                  tr.appendChild(tdTime);
+                  tr.appendChild(tdDetails);
+                  tbody.appendChild(tr);
+
+                  step.remove();
+                });
+
+                table.appendChild(thead);
+                table.appendChild(tbody);
+                body.appendChild(table);
+              } catch (err) {
+                console && console.warn && console.warn('Extent custom logs table error:', err);
+              }
+            }
+
+            function transformAllVisibleScenarioBodies() {
+              const scenarioBodies = document.querySelectorAll('.accordion .card .collapse.show .card-body, .accordion .card .collapse .card-body');
+              scenarioBodies.forEach(buildTableForBody);
+            }
+
+            // Initial run
+            transformAllVisibleScenarioBodies();
+
+            // Observe for dynamic expands/loads
+            const acc = document.querySelector('.accordion');
+            if (acc) {
+              const observer = new MutationObserver(function(mutations){
+                let needsRun = false;
+                mutations.forEach(function(m){
+                  if (m.type === 'childList' || (m.type === 'attributes' && (m.attributeName === 'class' || m.attributeName === 'style'))) {
+                    needsRun = true;
+                  }
+                });
+                if (needsRun) transformAllVisibleScenarioBodies();
+              });
+              observer.observe(acc, { subtree: true, childList: true, attributes: true });
+            }
+          } catch (e) {
+            console && console.warn && console.warn('Extent custom script error:', e);
+          }
+        });
+      ]]>
+        </scripts>
+
+        <!-- custom styles -->
+        <styles>
+            <![CDATA[
+        div.header.navbar {background-color: #0D5E0B}
+      ]]>
+        </styles>
+
+    </configuration>
+</extentreports>
