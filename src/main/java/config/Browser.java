@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.Objects;
 
 import static fixtures.Browsers.*;
+import static fixtures.Environment.DEV;
 import static fixtures.Environment.QA1;
 import static fixtures.Environment.UAT1;
 
@@ -169,7 +170,7 @@ public class Browser {
      *
      * <p><b>Propiedades requeridas:</b></p>
      * <ul>
-     *   <li>{@code -DEnvironment=QA1|UAT|DEV} - Entorno de ejecución</li>
+     *   <li>{@code -DEnvironment=QA1|QA|UAT|STG|DEV|DES} - Entorno de ejecución</li>
      *   <li>{@code -DBrowser=CHROME|FIREFOX|EDGE|SAFARI} - Navegador a usar</li>
      *   <li>{@code -DrunPipeline=true} - (Opcional) Modo CI/CD</li>
      * </ul>
@@ -197,8 +198,9 @@ public class Browser {
         }
 
         switch (environmentProperty) {
-            case "QA1" -> setEnvironment(QA1);
-            case "UAT" -> setEnvironment(UAT1);
+            case "QA1", "QA" -> setEnvironment(QA1);
+            case "UAT", "STG" -> setEnvironment(UAT1);
+            case "DEV", "DES" -> setEnvironment(DEV);
             default -> throw new IllegalStateException("Valor para 'Environment' no válido: " + environmentProperty);
         }
 

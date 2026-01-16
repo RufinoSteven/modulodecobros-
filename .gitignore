@@ -4,6 +4,7 @@ target/
 !**/src/test/**/target/
 dbsettings.properties
 /reports/
+.m2/repository/
 
 ### IntelliJ IDEA ###
 .idea/modules.xml
