@@ -1,6 +1,7 @@
 package stepDefinitions.Authentication;
 
 import actions.Authentication.LoginActions;
+import com.banreservas.commons.properties.PropManager;
 import config.Browser;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
@@ -28,27 +29,54 @@ import java.util.logging.Logger;
 public class LoginSteps {
     private final LoginActions loginActions = new LoginActions();
     private static final Logger log = Logger.getLogger(LoginSteps.class.getName());
+    private static final String CONFIG_FILE = "userConfig.properties";
 
     /**
-     * Loads credentials from userConfig.properties
+     * Loads credentials from userConfig.properties, decrypting if needed.
      *
      * @return String array where [0] is username and [1] is password (empty strings if not found)
      */
     public static String[] loadCredentials() {
         Properties props = new Properties();
 
-        try (var input = LoginSteps.class.getResourceAsStream("/userConfig.properties")) {
+        try (var input = LoginSteps.class.getResourceAsStream("/" + CONFIG_FILE)) {
             if (input == null) {
-                log.severe("userConfig.properties not found in classpath");
+                log.severe(CONFIG_FILE + " not found in classpath");
                 return new String[]{"", ""};
             }
             props.load(input);
-            return new String[]{props.getProperty("signature.username", "").replaceAll("['\"]", ""), props.getProperty("signature.password", "").replaceAll("['\"]", "")};
-
         } catch (IOException e) {
             log.severe("Error loading credentials: " + e.getMessage());
             return new String[]{"", ""};
         }
+
+        String username = sanitize(props.getProperty("signature.username", ""));
+        String password = sanitize(props.getProperty("signature.password", ""));
+
+        try {
+            PropManager pm = new PropManager(CONFIG_FILE);
+            username = getOrDecrypt(pm, props, "signature.username");
+            password = getOrDecrypt(pm, props, "signature.password");
+        } catch (RuntimeException e) {
+            log.warning("Unable to initialize PropManager for " + CONFIG_FILE + "; using plain values.");
+        }
+
+        return new String[]{username, password};
+    }
+
+    private static String getOrDecrypt(PropManager pm, Properties props, String key) {
+        String decrypted = pm.decryptProperty(key);
+        if (decrypted != null && !decrypted.isBlank()) {
+            return sanitize(decrypted);
+        }
+        return sanitize(props.getProperty(key, ""));
+    }
+
+    private static String sanitize(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace("'", "").replace("\"", "").trim();
     }
 
     @Given("^el usuario navega a la página de login$")
