@@ -116,6 +116,9 @@ signature.username='tu_usuario'
 signature.password='tu_contraseña'
 ```
 
+Las credenciales pueden estar encriptadas usando el mismo mecanismo que `dbsettings.properties`;
+el framework las desencripta automáticamente al iniciar sesión.
+
 ### 5️⃣ Verificar Configuración de Base de Datos
 
 Actualiza `src/main/java/dbConnections/DBConfig.java` si es necesario:
