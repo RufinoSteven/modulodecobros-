@@ -1,6 +1,7 @@
 package stepDefinitions.Authentication;
 
 import actions.Authentication.LoginActions;
+import com.banreservas.commons.properties.PropManager;
 import config.Browser;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
@@ -28,27 +29,62 @@ import java.util.logging.Logger;
 public class LoginSteps {
     private final LoginActions loginActions = new LoginActions();
     private static final Logger log = Logger.getLogger(LoginSteps.class.getName());
+    private static final String CONFIG_FILE = "userConfig.properties";
 
     /**
-     * Loads credentials from userConfig.properties
+     * Loads credentials from userConfig.properties (supports encrypted values).
      *
      * @return String array where [0] is username and [1] is password (empty strings if not found)
      */
     public static String[] loadCredentials() {
+        try {
+            PropManager pm = new PropManager(CONFIG_FILE);
+            String username = getOrDecrypt(pm, "signature.username");
+            String password = getOrDecrypt(pm, "signature.password");
+
+            if (username != null || password != null) {
+                return new String[]{sanitize(username), sanitize(password)};
+            }
+
+            log.warning(CONFIG_FILE + " loaded but no credentials found; using classpath fallback.");
+        } catch (Exception e) {
+            log.warning("Error loading credentials with PropManager: " + e.getMessage());
+        }
+
+        return loadCredentialsFromClasspath();
+    }
+
+    private static String[] loadCredentialsFromClasspath() {
         Properties props = new Properties();
 
-        try (var input = LoginSteps.class.getResourceAsStream("/userConfig.properties")) {
+        try (var input = LoginSteps.class.getResourceAsStream("/" + CONFIG_FILE)) {
             if (input == null) {
-                log.severe("userConfig.properties not found in classpath");
+                log.severe(CONFIG_FILE + " not found in classpath");
                 return new String[]{"", ""};
             }
             props.load(input);
-            return new String[]{props.getProperty("signature.username", "").replaceAll("['\"]", ""), props.getProperty("signature.password", "").replaceAll("['\"]", "")};
+            return new String[]{sanitize(props.getProperty("signature.username", "")),
+                    sanitize(props.getProperty("signature.password", ""))};
 
         } catch (IOException e) {
             log.severe("Error loading credentials: " + e.getMessage());
             return new String[]{"", ""};
         }
+    }
+
+    private static String getOrDecrypt(PropManager pm, String key) {
+        String decrypted = pm.decryptProperty(key);
+        if (decrypted != null && !decrypted.isBlank()) {
+            return decrypted;
+        }
+        return pm.getProperty(key);
+    }
+
+    private static String sanitize(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replaceAll("['\"]", "");
     }
 
     @Given("^el usuario navega a la página de login$")
