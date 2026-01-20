@@ -1,6 +1,7 @@
 package stepDefinitions.Authentication;
 
 import actions.Authentication.LoginActions;
+import com.banreservas.commons.properties.PropManager;
 import config.Browser;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
@@ -11,8 +12,6 @@ import utils.ExtentReportManager;
 import utils.Navigator;
 import utils.WindowManager;
 
-import java.io.IOException;
-import java.util.Properties;
 import java.util.logging.Logger;
 
 /**
@@ -28,27 +27,43 @@ import java.util.logging.Logger;
 public class LoginSteps {
     private final LoginActions loginActions = new LoginActions();
     private static final Logger log = Logger.getLogger(LoginSteps.class.getName());
+    private static final String USER_CONFIG_FILE = "userConfig.properties";
 
     /**
-     * Loads credentials from userConfig.properties
+     * Loads credentials from userConfig.properties.
+     *
+     * <p>Supports encrypted values using the same mechanism used for DB configs.</p>
      *
      * @return String array where [0] is username and [1] is password (empty strings if not found)
      */
     public static String[] loadCredentials() {
-        Properties props = new Properties();
-
-        try (var input = LoginSteps.class.getResourceAsStream("/userConfig.properties")) {
-            if (input == null) {
-                log.severe("userConfig.properties not found in classpath");
-                return new String[]{"", ""};
+        try {
+            PropManager pm = new PropManager(USER_CONFIG_FILE);
+            String username = normalizeValue(getOrDecrypt(pm, "signature.username"));
+            if (username.isBlank()) {
+                username = normalizeValue(getOrDecrypt(pm, "signature.user"));
             }
-            props.load(input);
-            return new String[]{props.getProperty("signature.username", "").replaceAll("['\"]", ""), props.getProperty("signature.password", "").replaceAll("['\"]", "")};
-
-        } catch (IOException e) {
+            String password = normalizeValue(getOrDecrypt(pm, "signature.password"));
+            return new String[]{username, password};
+        } catch (Exception e) {
             log.severe("Error loading credentials: " + e.getMessage());
             return new String[]{"", ""};
         }
+    }
+
+    private static String getOrDecrypt(PropManager pm, String key) {
+        String decrypted = pm.decryptProperty(key);
+        if (decrypted != null && !decrypted.isBlank()) {
+            return decrypted;
+        }
+        return pm.getProperty(key);
+    }
+
+    private static String normalizeValue(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replaceAll("['\"]", "").trim();
     }
 
     @Given("^el usuario navega a la página de login$")
