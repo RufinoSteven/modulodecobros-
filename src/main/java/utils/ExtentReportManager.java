@@ -8,8 +8,18 @@ import com.aventstack.extentreports.reporter.ExtentSparkReporter;
 import com.aventstack.extentreports.reporter.configuration.Theme;
 import config.Browser;
 import io.cucumber.java.Scenario;
+import org.openqa.selenium.ElementClickInterceptedException;
+import org.openqa.selenium.ElementNotInteractableException;
+import org.openqa.selenium.InvalidElementStateException;
+import org.openqa.selenium.NoSuchElementException;
+import org.openqa.selenium.NoSuchFrameException;
+import org.openqa.selenium.NoSuchWindowException;
 import org.openqa.selenium.OutputType;
+import org.openqa.selenium.StaleElementReferenceException;
 import org.openqa.selenium.TakesScreenshot;
+import org.openqa.selenium.TimeoutException;
+import org.openqa.selenium.WebDriverException;
+import org.openqa.selenium.WebElement;
 
 import java.io.File;
 import java.net.URL;
@@ -34,6 +44,9 @@ public class ExtentReportManager {
     private static final ThreadLocal<ExtentTest> SCENARIO_TL = new ThreadLocal<>();
     private static final ThreadLocal<Scenario> SCENARIO_CTX_TL = new ThreadLocal<>();
     private static final ThreadLocal<ExtentTest> STEP_TL = new ThreadLocal<>();
+    private static final ThreadLocal<Throwable> LAST_ERROR_TL = new ThreadLocal<>();
+    private static final ThreadLocal<Boolean> FAILURE_SCREENSHOT_TL =
+            ThreadLocal.withInitial(() -> false);
 
     // Mantiene la compatibilidad con los hooks existentes
     public static volatile String logMessage;
@@ -119,8 +132,7 @@ public class ExtentReportManager {
         logMessage = message;
         logStatus = status;
 
-        ExtentTest node = STEP_TL.get();
-        if (node == null) node = SCENARIO_TL.get();
+        ExtentTest node = getActiveNode();
         if (node == null) return;
 
         switch (status.toLowerCase()) {
@@ -130,6 +142,7 @@ public class ExtentReportManager {
             case "fail":
                 node.fail(message);
                 break;
+            case "warn":
             case "warning":
                 node.warning(message);
                 break;
@@ -143,16 +156,52 @@ public class ExtentReportManager {
     }
 
     /**
+     * Registra un fallo de validacion con descripcion y causa probable estandarizada.
+     */
+    public static void logValidationFailure(String validation, WebElement element, Throwable error) {
+        ExtentTest node = getActiveNode();
+        if (node == null) return;
+
+        FailureContext context = buildFailureContext(error);
+        String elementInfo = describeElement(element);
+        StringBuilder message = new StringBuilder();
+        message.append("<b>Validacion fallida:</b> ").append(validation);
+        if (elementInfo != null && !elementInfo.isBlank()) {
+            message.append("<br><b>Elemento:</b> ").append(elementInfo);
+        }
+        message.append("<br><b>Causa probable:</b> ").append(context.probableCause);
+        if (context.errorSummary != null && !context.errorSummary.isBlank()) {
+            message.append("<br><b>Detalle:</b> ").append(context.errorSummary);
+        }
+        node.warning(message.toString());
+    }
+
+    /**
      * Método Principal: Captura una captura de pantalla del navegador y la adjunta al informe.
      * También la adjunta al escenario de Cucumber para que aparezca en ambos lugares.
      */
     public static void captureScreenshot(String description) {
-        ExtentTest node = STEP_TL.get();
-        if (node == null) node = SCENARIO_TL.get();
-        if (node == null) return;
+        attachScreenshot(description);
+    }
+
+    /**
+     * Captura de pantalla tolerante a errores (para escenarios fallidos).
+     */
+    public static boolean captureScreenshotOnFailure(String description) {
+        try {
+            return attachScreenshot(description);
+        } catch (Exception e) {
+            logStep("No fue posible capturar la evidencia visual: " + e.getMessage(), "warning");
+            return false;
+        }
+    }
+
+    private static boolean attachScreenshot(String description) {
+        ExtentTest node = getActiveNode();
+        if (node == null) return false;
 
         byte[] screenshot = takeScreenshot();
-        if (screenshot == null) return;
+        if (screenshot == null) return false;
 
         String base64 = Base64.getEncoder().encodeToString(screenshot);
         String message = "📸" + ((description != null && !description.isEmpty()) ? description : "Screenshot");
@@ -166,6 +215,7 @@ public class ExtentReportManager {
             } catch (Exception ignored) {
             }
         }
+        return true;
     }
 
     // Ayudante interno: realmente toma los bytes de la captura de pantalla desde WebDriver.
@@ -190,8 +240,17 @@ public class ExtentReportManager {
 
         switch (status.toUpperCase()) {
             case "FAILED":
-                if (error != null) step.fail(error);
-                else step.fail("Paso fallido");
+                LAST_ERROR_TL.set(error);
+                logFailureContext("Paso", error);
+                if (!Boolean.TRUE.equals(FAILURE_SCREENSHOT_TL.get())) {
+                    boolean captured = captureScreenshotOnFailure("Captura on-failure del paso");
+                    if (captured) FAILURE_SCREENSHOT_TL.set(true);
+                }
+                if (error != null) {
+                    step.fail(error);
+                } else {
+                    step.fail("Paso fallido");
+                }
                 break;
             case "SKIPPED":
                 step.skip("Paso omitido");
@@ -210,6 +269,11 @@ public class ExtentReportManager {
 
         switch (scenario.getStatus()) {
             case FAILED:
+                logFailureContext("Escenario", LAST_ERROR_TL.get());
+                if (!Boolean.TRUE.equals(FAILURE_SCREENSHOT_TL.get())) {
+                    boolean captured = captureScreenshotOnFailure("Captura on-failure del escenario");
+                    if (captured) FAILURE_SCREENSHOT_TL.set(true);
+                }
                 scenarioNode.fail("Escenario fallido");
                 break;
             case SKIPPED:
@@ -266,6 +330,8 @@ public class ExtentReportManager {
         STEP_TL.remove();
         SCENARIO_TL.remove();
         SCENARIO_CTX_TL.remove();
+        LAST_ERROR_TL.remove();
+        FAILURE_SCREENSHOT_TL.remove();
     }
 
     /**
@@ -274,5 +340,121 @@ public class ExtentReportManager {
      */
     public static synchronized void flush() {
         if (extent != null) extent.flush();
+    }
+
+    private static ExtentTest getActiveNode() {
+        ExtentTest node = STEP_TL.get();
+        if (node == null) node = SCENARIO_TL.get();
+        return node;
+    }
+
+    private static void logFailureContext(String scope, Throwable error) {
+        ExtentTest node = getActiveNode();
+        if (node == null) return;
+
+        FailureContext context = buildFailureContext(error);
+        StringBuilder message = new StringBuilder();
+        message.append("<b>Contexto de fallo</b>");
+        if (scope != null && !scope.isBlank()) {
+            message.append(" (").append(scope).append(")");
+        }
+        message.append("<br><b>Tipo de fallo:</b> ").append(context.failureType);
+        message.append("<br><b>Impacto negocio:</b> ").append(context.businessImpact);
+        message.append("<br><b>Causa probable:</b> ").append(context.probableCause);
+        if (context.errorSummary != null && !context.errorSummary.isBlank()) {
+            message.append("<br><b>Detalle:</b> ").append(context.errorSummary);
+        }
+        node.info(message.toString());
+    }
+
+    private static FailureContext buildFailureContext(Throwable error) {
+        Throwable root = rootCause(error);
+        String failureType = inferFailureType(root);
+        String businessImpact = inferBusinessImpact(failureType);
+        String probableCause = inferProbableCause(root);
+        String errorSummary = summarizeError(root);
+        return new FailureContext(failureType, businessImpact, probableCause, errorSummary);
+    }
+
+    private static String inferFailureType(Throwable root) {
+        if (root instanceof AssertionError) return "Funcional";
+        return "Tecnico";
+    }
+
+    private static String inferBusinessImpact(String failureType) {
+        if ("Funcional".equalsIgnoreCase(failureType)) {
+            return "La validacion de negocio no cumple con lo esperado.";
+        }
+        return "No se pudo completar la validacion de negocio por un error tecnico.";
+    }
+
+    private static String inferProbableCause(Throwable root) {
+        if (root == null) return "Fallo sin detalle de excepcion.";
+        if (root instanceof StaleElementReferenceException) {
+            return "El DOM se actualizo y el elemento quedo obsoleto.";
+        }
+        if (root instanceof TimeoutException) {
+            return "Tiempo de espera excedido para localizar o interactuar con el elemento.";
+        }
+        if (root instanceof NoSuchElementException) {
+            return "Elemento no encontrado o locator desactualizado.";
+        }
+        if (root instanceof ElementClickInterceptedException) {
+            return "Elemento cubierto por otro componente o no disponible para click.";
+        }
+        if (root instanceof ElementNotInteractableException) {
+            return "Elemento no interactuable (oculto o deshabilitado).";
+        }
+        if (root instanceof InvalidElementStateException) {
+            return "Elemento en estado invalido para la accion.";
+        }
+        if (root instanceof NoSuchWindowException) {
+            return "La ventana se cerro o el contexto cambio.";
+        }
+        if (root instanceof NoSuchFrameException) {
+            return "El frame no esta disponible o cambio el contexto.";
+        }
+        if (root instanceof AssertionError) {
+            return "La validacion funcional no cumplio el resultado esperado.";
+        }
+        if (root instanceof NullPointerException) {
+            return "Elemento o dependencia nula no inicializada.";
+        }
+        if (root instanceof WebDriverException) {
+            return "Fallo del WebDriver o del navegador durante la ejecucion.";
+        }
+        return "Causa no clasificada.";
+    }
+
+    private static String summarizeError(Throwable root) {
+        if (root == null) return null;
+        String message = root.getMessage();
+        if (message == null || message.isBlank()) return root.getClass().getSimpleName();
+        return root.getClass().getSimpleName() + ": " + message;
+    }
+
+    private static Throwable rootCause(Throwable error) {
+        Throwable current = error;
+        while (current != null && current.getCause() != null && current.getCause() != current) {
+            current = current.getCause();
+        }
+        return current;
+    }
+
+    private static String describeElement(WebElement element) {
+        if (element == null) return null;
+        String raw = element.toString();
+        int arrow = raw.indexOf("->");
+        if (arrow >= 0) {
+            String cut = raw.substring(arrow + 2).trim();
+            if (cut.endsWith("]")) {
+                cut = cut.substring(0, cut.length() - 1).trim();
+            }
+            return cut;
+        }
+        return raw;
+    }
+
+    private record FailureContext(String failureType, String businessImpact, String probableCause, String errorSummary) {
     }
 }
