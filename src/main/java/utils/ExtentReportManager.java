@@ -51,7 +51,7 @@ public class ExtentReportManager {
             if (!outDir.exists() && !outDir.mkdirs()) {
                 throw new RuntimeException("Failed to create directory: " + outDir.getAbsolutePath());
             }
-            String reportPath = baseDir + File.separator + "SparkReport.html";
+            String reportPath = baseDir + File.separator + "ExtentHtml.html";
             extent = new ExtentReports();
             ExtentSparkReporter spark = new ExtentSparkReporter(reportPath);
             spark.config().setTheme(Theme.STANDARD);
