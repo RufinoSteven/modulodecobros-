@@ -34,6 +34,7 @@ public class ExtentReportManager {
     private static final ThreadLocal<ExtentTest> SCENARIO_TL = new ThreadLocal<>();
     private static final ThreadLocal<Scenario> SCENARIO_CTX_TL = new ThreadLocal<>();
     private static final ThreadLocal<ExtentTest> STEP_TL = new ThreadLocal<>();
+    private static final ThreadLocal<Throwable> LAST_ERROR_TL = new ThreadLocal<>();
 
     // Mantiene la compatibilidad con los hooks existentes
     public static volatile String logMessage;
@@ -190,8 +191,12 @@ public class ExtentReportManager {
 
         switch (status.toUpperCase()) {
             case "FAILED":
-                if (error != null) step.fail(error);
-                else step.fail("Paso fallido");
+                if (error != null) {
+                    LAST_ERROR_TL.set(error);
+                    step.fail(error);
+                } else {
+                    step.fail("Paso fallido");
+                }
                 break;
             case "SKIPPED":
                 step.skip("Paso omitido");
@@ -208,13 +213,43 @@ public class ExtentReportManager {
         ExtentTest scenarioNode = SCENARIO_TL.get();
         if (scenarioNode == null) return;
 
-        switch (scenario.getStatus()) {
-            case FAILED:
-                scenarioNode.fail("Escenario fallido");
-                break;
-            case SKIPPED:
-                scenarioNode.skip("Escenario omitido");
-                break;
+        if (scenario.isFailed()) {
+            Throwable lastError = LAST_ERROR_TL.get();
+            String errorDetails = null;
+            if (lastError != null) {
+                String msg = lastError.getMessage();
+                errorDetails = (msg != null && !msg.isBlank()) ? msg : lastError.toString();
+            }
+
+            String errorMsg = "❌ Error detectado en el escenario: " + scenario.getName();
+            if (errorDetails != null && !errorDetails.isBlank()) {
+                errorMsg += " - " + errorDetails;
+            }
+
+            byte[] screenshot = takeScreenshot();
+            ExtentTest targetNode = (STEP_TL.get() != null) ? STEP_TL.get() : scenarioNode;
+            if (screenshot != null) {
+                String base64 = Base64.getEncoder().encodeToString(screenshot);
+                targetNode.fail(errorMsg,
+                        MediaEntityBuilder.createScreenCaptureFromBase64String(base64).build());
+
+                try {
+                    scenario.attach(screenshot, "image/png", "Screenshot on Failure");
+                } catch (Exception ignored) {
+                }
+            } else {
+                targetNode.fail(errorMsg);
+            }
+
+            if (targetNode != scenarioNode) {
+                if (lastError != null) {
+                    scenarioNode.fail(lastError);
+                } else {
+                    scenarioNode.fail("Escenario fallido");
+                }
+            }
+        } else if (scenario.getStatus().toString().equalsIgnoreCase("SKIPPED")) {
+            scenarioNode.skip("Escenario omitido");
         }
     }
 
@@ -266,6 +301,7 @@ public class ExtentReportManager {
         STEP_TL.remove();
         SCENARIO_TL.remove();
         SCENARIO_CTX_TL.remove();
+        LAST_ERROR_TL.remove();
     }
 
     /**
